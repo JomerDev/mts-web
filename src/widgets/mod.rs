@@ -1,2 +1,2 @@
 pub mod toast;
-mod util;
+pub mod util;

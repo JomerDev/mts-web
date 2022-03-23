@@ -2,13 +2,17 @@ use std::{time::Duration, rc::Rc, cell::{RefCell}};
 use dominator::{Dom, html, events, clone};
 use futures_signals::{signal::{Mutable, Signal, SignalExt}, signal_vec::{MutableVec, SignalVecExt}, map_ref};
 use gloo_timers::callback::Timeout;
+use serde_derive::{Deserialize, Serialize};
+use anyhow::Result;
+
+use super::util::MovableWidget;
 
 
 thread_local! {
     pub static TOAST_CONTAINER: Rc<ToastContainer> = ToastContainer::new();
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize)]
 pub enum ToastPosition {
     TopLeft,
     TopCenter,
@@ -18,6 +22,7 @@ pub enum ToastPosition {
     BottomRight,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum ToastType {
     Info,
     Warning,
@@ -25,6 +30,9 @@ pub enum ToastType {
     Success
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "widget_type")]
+#[serde(default)]
 pub struct Toast {
     title: Mutable<String>,
     typ: ToastType,
@@ -33,10 +41,31 @@ pub struct Toast {
     close_on_click: Mutable<bool>,
     timeout: Mutable<Duration>,
     has_progress_bar: Mutable<bool>,
+    #[serde(skip)]
     closed: Mutable<bool>,
+    #[serde(skip)]
     id: u32,
+    #[serde(skip)]
     timeout_id: RefCell<Option<Timeout>>,
     timeout_paused: Mutable<bool>,
+}
+
+impl Default for Toast {
+    fn default() -> Self { 
+        Toast {
+            typ: ToastType::Info,
+            title: Mutable::new("".to_owned()),
+            text: Mutable::new("".to_owned()),
+            has_close_button: Mutable::new(false),
+            close_on_click: Mutable::new(true),
+            timeout: Mutable::new(Duration::default()),
+            has_progress_bar: Mutable::new(false),
+            closed: Mutable::new(false),
+            id: TOAST_CONTAINER.with(|x| x.get_new_id()),
+            timeout_id: RefCell::new(None),
+            timeout_paused: Mutable::new(false)
+        }
+    }
 }
 
 impl Toast {
@@ -123,8 +152,8 @@ impl Toast {
         }).dedupe()
     }
 
-    pub fn render( self: Rc<Toast> ) -> Dom {
-        let toast = &self;
+    pub fn render( self: &Rc<Toast> ) -> Dom {
+        let toast = self;
 
         html!("div", {
             .class("mtw-toast")
@@ -206,6 +235,24 @@ impl Toast {
                 TOAST_CONTAINER.with(|x| x.remove_toast( toast ));
             }).forget();
         }
+    }
+}
+
+pub type RcToast = Rc<Toast>;
+
+impl MovableWidget for RcToast {
+    fn render( self: &Rc<Toast> ) -> Dom {
+        Toast::render( &self )
+    }
+
+    fn serialize( self: &Rc<Toast> ) -> Result<String> {
+        let str = serde_json::to_string(self.as_ref())?;
+        Ok(str)
+    }
+
+    fn deserialize( data: &str ) -> Result<Box<dyn MovableWidget>> {
+        let toast: Toast = serde_json::from_str( data )?;
+        Ok(Box::new(Rc::new(toast)))
     }
 }
 
