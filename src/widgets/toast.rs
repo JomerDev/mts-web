@@ -1,5 +1,8 @@
 use std::{time::Duration, rc::Rc, cell::{RefCell}};
 use dominator::{Dom, html, events, clone};
+use dominator::{with_node, RefFn, DomBuilder};
+use dominator::animation::{MutableAnimation, Percentage};
+use dominator::traits::*;
 use futures_signals::{signal::{Mutable, Signal, SignalExt}, signal_vec::{MutableVec, SignalVecExt}, map_ref};
 use gloo_timers::callback::Timeout;
 
@@ -131,6 +134,10 @@ impl Toast {
             .class(self.type_to_class())
             .class_signal("mtw-toast-fadeout", self.closed.signal())
             .class_signal("mtw-toast-click-close", self.close_on_click.signal())
+            .apply_if( self.timeout.get() != Duration::default(), |dom| dom
+                .style("animation-delay", format!("{}ms",self.timeout.get().as_millis()) )
+                .class("")
+            )
             .event(clone!(toast => move |_: events::Click| {
                 if toast.close_on_click.get() {
                     toast.close();
