@@ -16,6 +16,8 @@ serde_derive = "1.0.126"
 serde = "1.0.126"
 lazy_static = "1.4.0"
 gloo-timers = "0.2.3"
+anyhow = "1.0.56"
+gloo-console = "0.2.1"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
