@@ -5,7 +5,7 @@ use gloo_timers::callback::Timeout;
 use serde_derive::{Deserialize, Serialize};
 use anyhow::Result;
 
-use super::util::MovableWidget;
+use super::util::{MovableWidget, Widget};
 
 
 thread_local! {
@@ -240,17 +240,20 @@ impl Toast {
 
 pub type RcToast = Rc<Toast>;
 
-impl MovableWidget for RcToast {
+impl Widget for RcToast {
     fn render( self: &Rc<Toast> ) -> Dom {
         Toast::render( &self )
     }
+}
+
+impl MovableWidget for RcToast {
 
     fn serialize( self: &Rc<Toast> ) -> Result<String> {
         let str = serde_json::to_string(self.as_ref())?;
         Ok(str)
     }
 
-    fn deserialize( data: &str ) -> Result<Box<dyn MovableWidget>> {
+    fn deserialize( data: &str ) -> Result<Box<dyn Widget>> {
         let toast: Toast = serde_json::from_str( data )?;
         Ok(Box::new(Rc::new(toast)))
     }
