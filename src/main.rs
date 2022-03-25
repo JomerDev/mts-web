@@ -86,6 +86,10 @@ fn main() {
     let widget2 = Rc::new(TestWidget2{});
 
     TABPANEL.with(|x| x.add_tab(widget2, TabPosition::End));
+
+    let widget3 = Rc::new(TestWidget{});
+
+    TABPANEL.with(|x| x.add_tab(widget3, TabPosition::End));
     
 
     dominator::append_dom(&dominator::body(), TABPANEL.with(|x| x.render_with_mixin( &|dom| dom)));

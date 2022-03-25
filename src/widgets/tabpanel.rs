@@ -60,7 +60,7 @@ impl TabPanel {
                                 html!("span", {
                                     .class("mtw-tab-close")
                                     .class("mtw-tab-closable")
-                                    .text("X")
+                                    .text("×")
                                     .event(clone!(panel => move |_: events::Click| {
                                         panel.remove_tab( index );
                                     }))
@@ -73,7 +73,7 @@ impl TabPanel {
                         })})))
                 }),
                 html!("div", {
-                    .style("flex-grow", "1")
+                    .class("mtw-tab-container")
                     .children_signal_vec(self.tabs.signal_vec_cloned()
                         .enumerate().map(clone!( panel => move |(index, widget)| 
                             html!("div", {
