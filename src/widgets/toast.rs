@@ -34,7 +34,6 @@ pub struct Toast {
     timeout: Mutable<Duration>,
     has_progress_bar: Mutable<bool>,
     closed: Mutable<bool>,
-    id: u32,
     timeout_id: RefCell<Option<Timeout>>,
     timeout_paused: Mutable<bool>,
 }
@@ -51,7 +50,6 @@ impl Toast {
             timeout: Mutable::new(Duration::new(5,0)),
             has_progress_bar: Mutable::new(true),
             closed: Mutable::new(true),
-            id: TOAST_CONTAINER.with(|x| x.get_new_id()),
             timeout_id: RefCell::new(None),
             timeout_paused: Mutable::new(false)
         })
@@ -203,15 +201,9 @@ impl Toast {
             self.closed.set(true);
             let toast = self.clone();
             Timeout::new(1_000, move || {
-                TOAST_CONTAINER.with(|x| x.remove_toast( toast ));
+                TOAST_CONTAINER.with(|x| x.remove_toast( &toast ));
             }).forget();
         }
-    }
-}
-
-impl PartialEq<Toast> for Toast {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
     }
 }
 
@@ -219,7 +211,6 @@ impl PartialEq<Toast> for Toast {
 pub struct ToastContainer {
     toasts: MutableVec<Rc<Toast>>,
     position: Mutable<ToastPosition>,
-    toast_id: Mutable<u32>
 }
 
 impl ToastContainer {
@@ -228,7 +219,6 @@ impl ToastContainer {
         Rc::new(Self {
             toasts: MutableVec::new(),
             position: Mutable::new(ToastPosition::TopCenter),
-            toast_id: Mutable::new(0)
         })
     }
 
@@ -264,13 +254,8 @@ impl ToastContainer {
         self.toasts.lock_mut().push_cloned(toast);
     }
 
-    fn remove_toast( &self, toast: Rc<Toast> ) {
-        self.toasts.lock_mut().retain(|x| **x != *toast);
-    }
-
-    fn get_new_id(&self) -> u32 {
-        self.toast_id.set(self.toast_id.get() + 1);
-        self.toast_id.get()
+    fn remove_toast( &self, toast: &Rc<Toast> ) {
+        self.toasts.lock_mut().retain(|x| !Rc::ptr_eq(&*x,&toast));
     }
 
     pub fn set_toast_position(&self, position: ToastPosition) {
