@@ -37,7 +37,7 @@ pub trait Widget {
         self.render_with_mixin(&builder_noop)
     }
 
-    fn render_with_mixin( self: &Self, _f: &dyn FnOnce(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> ) -> Dom {
+    fn render_with_mixin( self: &Self, _f: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> ) -> Dom {
         self.render()
     }
 }
