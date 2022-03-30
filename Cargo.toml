@@ -36,5 +36,8 @@ features = [
     "Response",
     "RequestInit",
     "Window",
-    "AnimationEvent"
+    "AnimationEvent",
+    "HtmlElement",
+    "Element",
+    "DomRect"
 ]

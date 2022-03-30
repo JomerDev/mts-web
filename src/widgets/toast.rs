@@ -1,12 +1,16 @@
-use std::{time::Duration, rc::Rc, cell::{RefCell}};
-use dominator::{Dom, html, events, clone};
-use futures_signals::{signal::{Mutable, Signal, SignalExt}, signal_vec::{MutableVec, SignalVecExt}, map_ref};
+use anyhow::Result;
+use dominator::{clone, events, html, Dom, with_node};
+use futures_signals::{
+    map_ref,
+    signal::{Mutable, Signal, SignalExt},
+    signal_vec::{MutableVec, SignalVecExt},
+};
 use gloo_timers::callback::Timeout;
 use serde_derive::{Deserialize, Serialize};
-use anyhow::Result;
+use web_sys::Element;
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use super::util::{MovableWidget, Widget};
-
 
 thread_local! {
     pub static TOAST_CONTAINER: Rc<ToastContainer> = ToastContainer::new();
@@ -27,7 +31,7 @@ pub enum ToastType {
     Info,
     Warning,
     Error,
-    Success
+    Success,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -51,7 +55,7 @@ pub struct Toast {
 }
 
 impl Default for Toast {
-    fn default() -> Self { 
+    fn default() -> Self {
         Toast {
             typ: ToastType::Info,
             title: Mutable::new("".to_owned()),
@@ -63,26 +67,25 @@ impl Default for Toast {
             closed: Mutable::new(false),
             id: TOAST_CONTAINER.with(|x| x.get_new_id()),
             timeout_id: RefCell::new(None),
-            timeout_paused: Mutable::new(false)
+            timeout_paused: Mutable::new(false),
         }
     }
 }
 
 impl Toast {
-
-    pub fn new( typ: ToastType ) -> Rc<Self> {
+    pub fn new(typ: ToastType) -> Rc<Self> {
         Rc::new(Self {
             typ,
             title: Mutable::new("".to_owned()),
             text: Mutable::new("".to_owned()),
             has_close_button: Mutable::new(false),
             close_on_click: Mutable::new(true),
-            timeout: Mutable::new(Duration::new(5,0)),
+            timeout: Mutable::new(Duration::new(5, 0)),
             has_progress_bar: Mutable::new(true),
             closed: Mutable::new(true),
             id: TOAST_CONTAINER.with(|x| x.get_new_id()),
             timeout_id: RefCell::new(None),
-            timeout_paused: Mutable::new(false)
+            timeout_paused: Mutable::new(false),
         })
     }
 
@@ -119,20 +122,20 @@ impl Toast {
         self
     }
 
-    pub fn info( ) -> Rc<Self> {
-        Self::new( ToastType::Info )
+    pub fn info() -> Rc<Self> {
+        Self::new(ToastType::Info)
     }
 
-    pub fn warning( ) -> Rc<Self> {
-        Self::new( ToastType::Warning )
+    pub fn warning() -> Rc<Self> {
+        Self::new(ToastType::Warning)
     }
 
-    pub fn error( ) -> Rc<Self> {
-        Self::new( ToastType::Error )
+    pub fn error() -> Rc<Self> {
+        Self::new(ToastType::Error)
     }
 
-    pub fn success( ) -> Rc<Self> {
-        Self::new( ToastType::Success )
+    pub fn success() -> Rc<Self> {
+        Self::new(ToastType::Success)
     }
 
     fn type_to_class(&self) -> String {
@@ -149,10 +152,11 @@ impl Toast {
             let has_progress_bar = self.has_progress_bar.signal(),
             let timeout_paused = self.timeout_paused.signal() =>
             *has_progress_bar && !*timeout_paused
-        }).dedupe()
+        })
+        .dedupe()
     }
 
-    pub fn render( self: &Rc<Toast> ) -> Dom {
+    pub fn render(self: &Rc<Toast>) -> Dom {
         let toast = self;
 
         html!("div", {
@@ -199,10 +203,10 @@ impl Toast {
         })
     }
 
-    fn start_timeout( self: &Rc<Toast> ) {
+    fn start_timeout(self: &Rc<Toast>) {
         if self.timeout.get() != Duration::default() {
             let toast = self.clone();
-        
+
             let id = Timeout::new(self.timeout.get().as_millis() as u32, move || {
                 toast.close();
             });
@@ -210,16 +214,16 @@ impl Toast {
         }
     }
 
-    fn stop_timeout( self: &Rc<Toast> ) {
+    fn stop_timeout(self: &Rc<Toast>) {
         if let Some(timout_id) = self.timeout_id.borrow_mut().take() {
             timout_id.cancel();
         }
     }
 
-    pub fn open<'a>( self: &'a Rc<Toast> ) -> &'a Rc<Toast> {
+    pub fn open<'a>(self: &'a Rc<Toast>) -> &'a Rc<Toast> {
         if self.closed.get() {
             self.closed.set(false);
-            TOAST_CONTAINER.with(|x| x.add_toast( self.clone() ));
+            TOAST_CONTAINER.with(|x| x.add_toast(self.clone()));
             if self.timeout.get() != Duration::default() {
                 self.start_timeout();
             }
@@ -227,13 +231,14 @@ impl Toast {
         self
     }
 
-    pub fn close( self: &Rc<Toast> ) {
+    pub fn close(self: &Rc<Toast>) {
         if !self.closed.get() {
             self.closed.set(true);
             let toast = self.clone();
             Timeout::new(1_000, move || {
-                TOAST_CONTAINER.with(|x| x.remove_toast( toast ));
-            }).forget();
+                TOAST_CONTAINER.with(|x| x.remove_toast(toast));
+            })
+            .forget();
         }
     }
 }
@@ -241,20 +246,19 @@ impl Toast {
 pub type RcToast = Rc<Toast>;
 
 impl Widget for RcToast {
-    fn render( self: &Rc<Toast> ) -> Dom {
-        Toast::render( &self )
+    fn render(self: &Rc<Toast>) -> Dom {
+        Toast::render(&self)
     }
 }
 
 impl MovableWidget for RcToast {
-
-    fn serialize( self: &Rc<Toast> ) -> Result<String> {
+    fn serialize(self: &Rc<Toast>) -> Result<String> {
         let str = serde_json::to_string(self.as_ref())?;
         Ok(str)
     }
 
-    fn deserialize( data: &str ) -> Result<Box<dyn Widget>> {
-        let toast: Toast = serde_json::from_str( data )?;
+    fn deserialize(data: &str) -> Result<Box<dyn Widget>> {
+        let toast: Toast = serde_json::from_str(data)?;
         Ok(Box::new(Rc::new(toast)))
     }
 }
@@ -265,25 +269,24 @@ impl PartialEq<Toast> for Toast {
     }
 }
 
-
 pub struct ToastContainer {
     toasts: MutableVec<Rc<Toast>>,
     position: Mutable<ToastPosition>,
-    toast_id: Mutable<u32>
+    toast_id: Mutable<u32>,
 }
 
 impl ToastContainer {
-
     fn new() -> Rc<Self> {
         Rc::new(Self {
             toasts: MutableVec::new(),
             position: Mutable::new(ToastPosition::TopCenter),
-            toast_id: Mutable::new(0)
+            toast_id: Mutable::new(0),
         })
     }
 
-    fn has_toasts( &self ) -> impl Signal<Item = bool> {
-        self.toasts.signal_vec_cloned()
+    fn has_toasts(&self) -> impl Signal<Item = bool> {
+        self.toasts
+            .signal_vec_cloned()
             .len()
             .map(|len| len != 0)
             .dedupe()
@@ -300,7 +303,7 @@ impl ToastContainer {
         }
     }
 
-    fn render( &self ) -> Dom {
+    fn render(&self) -> Dom {
         html!("div", {
             .class("mtw-toast-container")
             .class(self.position_to_class())
@@ -310,11 +313,11 @@ impl ToastContainer {
         })
     }
 
-    fn add_toast( &self, toast: Rc<Toast> ) {
+    fn add_toast(&self, toast: Rc<Toast>) {
         self.toasts.lock_mut().push_cloned(toast);
     }
 
-    fn remove_toast( &self, toast: Rc<Toast> ) {
+    fn remove_toast(&self, toast: Rc<Toast>) {
         self.toasts.lock_mut().retain(|x| **x != *toast);
     }
 

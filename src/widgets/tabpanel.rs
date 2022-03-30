@@ -1,16 +1,19 @@
 use std::{cmp, rc::Rc};
 
-use dominator::{Dom, html, DomBuilder, clone, events};
-use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableVec, SignalVecExt}};
+use dominator::{clone, events, html, Dom, DomBuilder};
+use futures_signals::{
+    signal::{Mutable, SignalExt},
+    signal_vec::{MutableVec, SignalVecExt},
+};
 use web_sys::HtmlElement;
 
 use super::util::Widget;
 
 pub trait TabPanelInfo: Widget {
-    fn title( &self ) -> String {
+    fn title(&self) -> String {
         "".to_owned()
     }
-    fn closable( &self ) -> bool {
+    fn closable(&self) -> bool {
         true
     }
 }
@@ -18,23 +21,26 @@ pub trait TabPanelInfo: Widget {
 pub enum TabPosition {
     Start,
     End,
-    Index(usize)
+    Index(usize),
 }
 
 pub struct TabPanel {
     current_tab: Mutable<usize>,
-    tabs: MutableVec<Rc<dyn TabPanelInfo>>
+    tabs: MutableVec<Rc<dyn TabPanelInfo>>,
 }
 
 impl TabPanel {
     pub fn new() -> Self {
         TabPanel {
             current_tab: Mutable::new(0),
-            tabs: MutableVec::new()
+            tabs: MutableVec::new(),
         }
     }
 
-    pub fn render_with_mixin( self: &Rc<TabPanel>, mixin: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> ) -> Dom {
+    pub fn render_with_mixin(
+        self: &Rc<TabPanel>,
+        mixin: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
+    ) -> Dom {
         let panel = self.clone();
         html!("div", {
             .style("width", "1000px")
@@ -75,7 +81,7 @@ impl TabPanel {
                 html!("div", {
                     .class("mtw-tab-container")
                     .children_signal_vec(self.tabs.signal_vec_cloned()
-                        .enumerate().map(clone!( panel => move |(index, widget)| 
+                        .enumerate().map(clone!( panel => move |(index, widget)|
                             html!("div", {
                                 .class("mtw-tab-frame")
                                 .child( widget.render() )
@@ -87,24 +93,24 @@ impl TabPanel {
         })
     }
 
-    pub fn add_tab( &self, widget: Rc<dyn TabPanelInfo>, position: TabPosition ) {
+    pub fn add_tab(&self, widget: Rc<dyn TabPanelInfo>, position: TabPosition) {
         match position {
             TabPosition::Index(i) => {
                 let i = cmp::min(i, self.tabs.lock_ref().len() - 1);
                 self.tabs.lock_mut().insert_cloned(i, widget);
-            },
+            }
             TabPosition::End => self.tabs.lock_mut().push_cloned(widget),
             TabPosition::Start => self.tabs.lock_mut().insert_cloned(0, widget),
         }
     }
 
-    pub fn select_tab( &self, index: usize ) {
+    pub fn select_tab(&self, index: usize) {
         let len = self.tabs.lock_ref().len();
         let index = cmp::min(index, len - 1);
         self.current_tab.set(index);
     }
 
-    pub fn remove_tab( &self, index: usize ) {
+    pub fn remove_tab(&self, index: usize) {
         let len = self.tabs.lock_ref().len();
         let index = cmp::min(index, len - 1);
         self.tabs.lock_mut().remove(index);
