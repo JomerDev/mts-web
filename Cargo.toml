@@ -39,5 +39,6 @@ features = [
     "AnimationEvent",
     "HtmlElement",
     "Element",
-    "DomRect"
+    "DomRect",
+    "HtmlCollection"
 ]

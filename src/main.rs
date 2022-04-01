@@ -4,7 +4,7 @@ use std::{rc::Rc, time::Duration};
 
 use serde_json::Value;
 use widgets::{
-    tabpanel::{TabPanel, TabPanelInfo, TabPosition},
+    tabpanel::{TabPanel, TabPanelInfo, TabPosition, Tab},
     toast::RcToast,
     util::{get_type_deserializer, register, MovableWidget, Widget},
 };
@@ -95,17 +95,25 @@ fn main() {
     // dominator::append_dom(&dominator::body(), widget.render());
     // }
 
-    let widget1 = Rc::new(TestWidget {});
+    let widget1 = TestWidget {};
 
-    TABPANEL.with(|x| x.add_tab(widget1, TabPosition::Start));
+    let mut tab1 = Tab::new();
+    tab1.set_title(String::from("Tab 1")).set_closable(true);
+    tab1.set_render_content(Box::new(move || widget1.render()));
 
-    let widget2 = Rc::new(TestWidget2 {});
+    TABPANEL.with(|x| x.add_tab(Rc::new(tab1), TabPosition::Start));
 
-    TABPANEL.with(|x| x.add_tab(widget2, TabPosition::End));
+    let widget2 = TestWidget2 {};
 
-    let widget3 = Rc::new(TestWidget {});
+    let mut tab2 = Tab::new();
+    tab2.set_title(String::from("Tab 2")).set_closable(true);
+    tab2.set_render_content(Box::new(move || widget2.render()));
 
-    TABPANEL.with(|x| x.add_tab(widget3, TabPosition::End));
+    TABPANEL.with(|x| x.add_tab(Rc::new(tab2), TabPosition::End));
+
+    // let widget3 = Rc::new(TestWidget {});
+
+    // TABPANEL.with(|x| x.add_tab(widget3, TabPosition::End));
 
     dominator::append_dom(
         &dominator::body(),
