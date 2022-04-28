@@ -15,38 +15,17 @@ extern crate lazy_static;
 mod utils;
 pub mod widgets;
 
-struct TestWidget;
-struct TestWidget2;
+struct TestWidget {
+    pub color: String
+}
 
 impl Widget for TestWidget {
     fn render(&self) -> Dom {
         html!("div", {
-            .style("background-color", "red")
+            .style("background-color", &self.color)
             .style("width", "100%")
             .style("height", "100%")
         })
-    }
-}
-
-impl TabPanelInfo for TestWidget {
-    fn title(&self) -> String {
-        "test title".to_owned()
-    }
-}
-
-impl Widget for TestWidget2 {
-    fn render(&self) -> Dom {
-        html!("div", {
-            .style("background-color", "yellow")
-            .style("width", "100%")
-            .style("height", "100%")
-        })
-    }
-}
-
-impl TabPanelInfo for TestWidget2 {
-    fn title(&self) -> String {
-        "test title".to_owned()
     }
 }
 
@@ -95,7 +74,7 @@ fn main() {
     // dominator::append_dom(&dominator::body(), widget.render());
     // }
 
-    let widget1 = TestWidget {};
+    let widget1 = TestWidget { color: String::from("red") };
 
     let mut tab1 = Tab::new();
     tab1.set_title(String::from("Tab 1")).set_closable(true);
@@ -103,7 +82,7 @@ fn main() {
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab1), TabPosition::Start));
 
-    let widget2 = TestWidget2 {};
+    let widget2 = TestWidget { color: String::from("green") };
 
     let mut tab2 = Tab::new();
     tab2.set_title(String::from("Tab 2")).set_closable(true);
@@ -111,9 +90,13 @@ fn main() {
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab2), TabPosition::End));
 
-    // let widget3 = Rc::new(TestWidget {});
+    let widget3 = TestWidget { color: String::from("yellow") };
 
-    // TABPANEL.with(|x| x.add_tab(widget3, TabPosition::End));
+    let mut tab3 = Tab::new();
+    tab3.set_title(String::from("Tab 3")).set_closable(true);
+    tab3.set_render_content(Box::new(move || widget3.render()));
+
+    TABPANEL.with(|x| x.add_tab(Rc::new(tab3), TabPosition::End));
 
     dominator::append_dom(
         &dominator::body(),

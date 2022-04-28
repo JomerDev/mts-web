@@ -2,8 +2,8 @@ use std::{cmp, rc::Rc};
 
 use dominator::{clone, events, html, Dom, DomBuilder, with_node};
 use futures_signals::{
-    signal::{Mutable, SignalExt},
-    signal_vec::{MutableVec, SignalVecExt},
+    signal::{Mutable, SignalExt, ReadOnlyMutable, Signal},
+    signal_vec::{MutableVec, SignalVecExt}, map_ref,
 };
 use gloo_console::log;
 use lazy_static::__Deref;
@@ -76,17 +76,6 @@ impl Tab{
     }
 }
 
-fn get_index( node: &Element ) -> usize {
-    let mut index = 0;
-    let mut nod = node;
-    while let Some(node) = nod.previous_element_sibling() {
-        nod = &node;
-        stack.push(&&node);
-        index += 1;
-    }
-    index
-}
-
 pub trait TabPanelInfo: Widget {
     fn title(&self) -> String {
         "".to_owned()
@@ -115,6 +104,20 @@ impl TabPanel {
         }
     }
 
+    fn is_currently_selected_tab(&self, index: &ReadOnlyMutable<Option<usize>>) -> impl Signal<Item = bool> {
+        (map_ref! {
+            let current_tab = self.current_tab.signal(),
+            let index = index.signal() =>
+            if let Some(idx) = index {
+                current_tab == idx
+            } else {
+                false
+            }
+        })
+        .dedupe()
+    }
+
+
     pub fn render_with_mixin(
         self: &Rc<TabPanel>,
         mixin: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
@@ -128,10 +131,13 @@ impl TabPanel {
             .children(&mut [
                 html!("ul", {
                     .class("mtw-tabbar")
+                    .child(&mut
+                        html!("li", {
+                            .class("mtw-tabbar-tab")
+                        })
+                    )
                     .children_signal_vec(self.tabs.signal_vec_cloned()
                     .enumerate().map(clone!( panel => move |(index, widget)| {
-                        let index = index.lock_ref().unwrap();
-                        log!("draw_index", index);
                         html!("li", {
                         .class("mtw-tabbar-tab")
                         .children(&mut [
@@ -147,16 +153,14 @@ impl TabPanel {
                                 .class("mtw-tab-close")
                                 .class("mtw-tab-closable")
                                 .text("×")
-                                .event(clone!(panel => move |_: events::Click| {
-                                    panel.remove_tab( index );
+                                .event(clone!(panel, index => move |_: events::Click| {
+                                    panel.remove_tab( index.get().unwrap() );
                                 }))
                             })
                         ])
-                        .with_node!( node => {
-                            .class_signal("mtw-tab-active", panel.current_tab.signal().map(|current_tab| current_tab == get_index(node.deref()) ) )
-                        })
-                        .event(clone!(panel => move |_: events::Click| {
-                            panel.select_tab( index )
+                        .class_signal("mtw-tab-active", panel.is_currently_selected_tab( &index ) )
+                        .event(clone!(panel, index => move |_: events::Click| {
+                            panel.select_tab( index.get().unwrap() )
                         }))
                         .event(clone!(panel => move |event: events::DragStart| {
 
@@ -171,7 +175,7 @@ impl TabPanel {
                             html!("div", {
                                 .class("mtw-tab-frame")
                                 .child( widget.render() )
-                                .visible_signal( panel.current_tab.signal().map( move |current_tab| current_tab == index.lock_ref().unwrap() ) )
+                                .visible_signal( panel.is_currently_selected_tab( &index ) )
                             })
                         )))
                 }),
@@ -201,9 +205,7 @@ impl TabPanel {
         let index = cmp::min(index, len - 1);
         self.tabs.lock_mut().remove(index);
         let len = self.tabs.lock_ref().len();
-        log!(self.current_tab.get(), len - 1);
         if self.current_tab.get() >= len - 1 {
-            log!("set");
             self.current_tab.set(len - 1);
         }
     }

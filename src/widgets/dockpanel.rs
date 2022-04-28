@@ -8,7 +8,7 @@ use web_sys::Element;
 use super::boxengine::{Sizer, BoxEngine};
 
 
-enum DockPanelNode {
+pub enum DockPanelNode {
     Split(SplitLayoutNode),
     Tab(TabLayoutNode),
     None
@@ -52,7 +52,7 @@ struct Tab{
 
 }
 
-struct TabLayoutNode {
+pub struct TabLayoutNode {
     tab_sizer: Sizer,
     widget_sizer: Sizer,
     tabbar: Tab
@@ -85,11 +85,11 @@ impl TabLayoutNode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum SplitOrientation {
+pub enum SplitOrientation {
     Horizontal,
     Vertical
 }
-struct SplitLayoutNode {
+pub struct SplitLayoutNode {
     normalized: bool,
     pub children: Vec<DockPanelNode>,
     pub sizers: Vec<Sizer>,

@@ -70,7 +70,7 @@ impl BoxEngine {
             return space - total_max;
         }
 
-        // The loops below perofm sub-pixel precision sizing. A near zero
+        // The loops below perfom sub-pixel precision sizing. A near zero
         // value is used for compares instead of zero to ensure that the
         // loop terminates when the subdivided space is reasonably small.
         if space < total_size {

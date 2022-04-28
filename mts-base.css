@@ -522,9 +522,11 @@ body{
 
     cursor: pointer;
 }
+/*
 .mtw-tabbar-tab.mtw-tab-active {
     cursor: unset;
 }
+*/
 .mtw-tabbar-tab:first-child{
     margin-left: 0;
 }
