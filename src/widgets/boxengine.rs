@@ -83,7 +83,12 @@ impl BoxEngine {
         0.0
     }
 
-    fn shrink_all_sizers( mut sizers: Vec<Sizer>, mut free_space: f64, mut stretch_count: usize, total_stretch: f64 ) {
+    fn shrink_all_sizers(
+        mut sizers: Vec<Sizer>,
+        mut free_space: f64,
+        mut stretch_count: usize,
+        total_stretch: f64,
+    ) {
         let mut not_done_count = sizers.len();
         // Shrink each stretchable sizer by an amount proportional to its
         // stretch factor. If a sizer reaches its min size its marked as
@@ -133,7 +138,12 @@ impl BoxEngine {
         }
     }
 
-    fn grow_all_sizers( mut sizers: Vec<Sizer>, mut free_space: f64, mut stretch_count: usize, total_stretch: f64 ) {
+    fn grow_all_sizers(
+        mut sizers: Vec<Sizer>,
+        mut free_space: f64,
+        mut stretch_count: usize,
+        total_stretch: f64,
+    ) {
         let mut not_done_count = sizers.len();
         // Shrink each stretchable sizer by an amount proportional to its
         // stretch factor. If a sizer reaches its min size its marked as
@@ -205,7 +215,7 @@ impl BoxEngine {
             shrink_limit += sizer.size - sizer.min_size;
         }
 
-        let delta = f64::min(delta, f64::min(grow_limit,shrink_limit));
+        let delta = f64::min(delta, f64::min(grow_limit, shrink_limit));
 
         let mut grow = delta;
         for mut sizer in &mut sizers[0..index] {
@@ -244,7 +254,7 @@ impl BoxEngine {
             shrink_limit += sizer.size - sizer.min_size;
         }
 
-        let delta = f64::min(delta, f64::min(grow_limit,shrink_limit));
+        let delta = f64::min(delta, f64::min(grow_limit, shrink_limit));
 
         let mut grow = delta;
         for mut sizer in &mut sizers[(index + 1)..] {

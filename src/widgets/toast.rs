@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dominator::{clone, events, html, Dom, with_node};
+use dominator::{clone, events, html, Dom};
 use futures_signals::{
     map_ref,
     signal::{Mutable, Signal, SignalExt},
@@ -7,7 +7,6 @@ use futures_signals::{
 };
 use gloo_timers::callback::Timeout;
 use serde_derive::{Deserialize, Serialize};
-use web_sys::Element;
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use super::util::{MovableWidget, Widget};

@@ -2,11 +2,11 @@ use anyhow::Result;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use dominator::{Dom, DomBuilder};
+use dominator::{html, Dom, DomBuilder};
 use web_sys::HtmlElement;
 
 thread_local! {
-    pub static WIDGET_REGISTRY: RefCell<HashMap<String,fn(&str)->Result<Box<dyn Widget>>>>  = RefCell::new(HashMap::new());
+    pub static WIDGET_REGISTRY: RefCell<HashMap<String,fn(&str)->Result<Box<dyn Widget>>>> = RefCell::new(HashMap::new());
 }
 
 pub trait MovableWidget: Widget {
@@ -41,6 +41,6 @@ pub trait Widget {
         self: &Self,
         _f: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
     ) -> Dom {
-        self.render()
+        html!("div")
     }
 }

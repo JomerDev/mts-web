@@ -4,7 +4,7 @@ use std::{rc::Rc, time::Duration};
 
 use serde_json::Value;
 use widgets::{
-    tabpanel::{TabPanel, TabPanelInfo, TabPosition, Tab},
+    tabpanel::{Tab, TabPanel, TabPanelInfo, TabPosition},
     toast::RcToast,
     util::{get_type_deserializer, register, MovableWidget, Widget},
 };
@@ -15,8 +15,9 @@ extern crate lazy_static;
 mod utils;
 pub mod widgets;
 
+#[derive(Clone)]
 struct TestWidget {
-    pub color: String
+    pub color: String,
 }
 
 impl Widget for TestWidget {
@@ -74,7 +75,9 @@ fn main() {
     // dominator::append_dom(&dominator::body(), widget.render());
     // }
 
-    let widget1 = TestWidget { color: String::from("red") };
+    let widget1 = TestWidget {
+        color: String::from("red"),
+    };
 
     let mut tab1 = Tab::new();
     tab1.set_title(String::from("Tab 1")).set_closable(true);
@@ -82,7 +85,9 @@ fn main() {
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab1), TabPosition::Start));
 
-    let widget2 = TestWidget { color: String::from("green") };
+    let widget2 = TestWidget {
+        color: String::from("green"),
+    };
 
     let mut tab2 = Tab::new();
     tab2.set_title(String::from("Tab 2")).set_closable(true);
@@ -90,13 +95,35 @@ fn main() {
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab2), TabPosition::End));
 
-    let widget3 = TestWidget { color: String::from("yellow") };
+    let widget3 = TestWidget {
+        color: String::from("yellow"),
+    };
 
     let mut tab3 = Tab::new();
     tab3.set_title(String::from("Tab 3")).set_closable(true);
     tab3.set_render_content(Box::new(move || widget3.render()));
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab3), TabPosition::End));
+
+    let widget4 = TestWidget {
+        color: String::from("yellow"),
+    };
+
+    let mut tab5 = Tab::new();
+    tab5.set_title(String::from("Tab 1")).set_closable(true);
+    tab5.set_render_content(Box::new(move || widget4.render()));
+
+    let inner_panel = Rc::new(TabPanel::new());
+
+    inner_panel
+        .as_ref()
+        .add_tab(Rc::new(tab5), TabPosition::End);
+
+    let mut tab4 = Tab::new();
+    tab4.set_title("Tab 4".to_string());
+    tab4.set_render_content(Box::new(move || inner_panel.render()));
+
+    TABPANEL.with(|x| x.add_tab(Rc::new(tab4), TabPosition::End));
 
     dominator::append_dom(
         &dominator::body(),
