@@ -4,7 +4,7 @@ use std::{rc::Rc, time::Duration};
 
 use serde_json::Value;
 use widgets::{
-    tabpanel::{TabPanel, TabPanelInfo, TabPosition, Tab},
+    tabpanel::{TabPanel, TabPosition, Tab},
     toast::RcToast,
     util::{get_type_deserializer, register, MovableWidget, Widget},
 };
@@ -78,7 +78,7 @@ fn main() {
 
     let mut tab1 = Tab::new();
     tab1.set_title(String::from("Tab 1")).set_closable(true);
-    tab1.set_render_content(Box::new(move || widget1.render()));
+    // tab1.set_render_content(Box::new(move || widget1.render()));
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab1), TabPosition::Start));
 
@@ -86,7 +86,7 @@ fn main() {
 
     let mut tab2 = Tab::new();
     tab2.set_title(String::from("Tab 2")).set_closable(true);
-    tab2.set_render_content(Box::new(move || widget2.render()));
+    // tab2.set_render_content(Box::new(move || widget2.render()));
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab2), TabPosition::End));
 
@@ -94,7 +94,7 @@ fn main() {
 
     let mut tab3 = Tab::new();
     tab3.set_title(String::from("Tab 3")).set_closable(true);
-    tab3.set_render_content(Box::new(move || widget3.render()));
+    // tab3.set_render_content(Box::new(move || widget3.render()));
 
     TABPANEL.with(|x| x.add_tab(Rc::new(tab3), TabPosition::End));
 

@@ -3,9 +3,9 @@ use std::{cell::RefCell, rc::Rc};
 use dominator::{html, Dom};
 use futures_signals::signal::Mutable;
 use gloo_timers::callback::Timeout;
-use web_sys::Element;
+use web_sys::{Element, EventTarget};
 
-use super::boxengine::{Sizer, BoxEngine};
+use super::{boxengine::{Sizer, BoxEngine}, tabpanel::{TabPanel, Tab}};
 
 
 pub enum DockPanelNode {
@@ -13,6 +13,7 @@ pub enum DockPanelNode {
     Tab(TabLayoutNode),
     None
 }
+
 struct DockPanel {
     root: DockPanelNode,
     overlay: DockPanelOverlay
@@ -21,7 +22,7 @@ struct DockPanel {
 impl DockPanel {
 
 
-    fn splitRoot( mut self, orientation: SplitOrientation ) {
+    fn split_root( mut self, orientation: SplitOrientation ) {
         let (old_root, orientation_matches) = match self.root {
             DockPanelNode::Split( node ) => {
                 if node.orientation == orientation {
@@ -47,20 +48,15 @@ impl DockPanel {
 }
 
 
-
-struct Tab{
-
-}
-
 pub struct TabLayoutNode {
     tab_sizer: Sizer,
     widget_sizer: Sizer,
-    tabbar: Tab
+    tabbar: TabPanel
 }
 
 impl TabLayoutNode {
 
-    pub fn new( tab: Tab ) -> Self {
+    pub fn new( tab: TabPanel ) -> Self {
         let mut tab_sizer = BoxEngine::create_sizer(None);
         tab_sizer.stretch = 0.0;
         let mut widget_sizer = BoxEngine::create_sizer(None);
@@ -73,12 +69,20 @@ impl TabLayoutNode {
         }
     }
 
-    pub fn find_tab_node(&self) -> Option<&Tab> {
-        None //TODO
+    pub fn find_tab_node(&self, tab: &Rc<Tab>) -> Option<&Self> {
+        self.tabbar.get_tab_index(tab).and(Some(&self))
     }
 
     pub fn find_first_tab_node(&self) -> &Self {
         self
+    }
+
+    pub fn find_split_node<'a>() -> Option<&'a SplitLayoutNode> {
+        None
+    }
+
+    pub fn hit_tab_panel(&self, target: EventTarget ) -> bool {
+        self.tabbar.check_if_over_tabpanel( target )
     }
 
 
