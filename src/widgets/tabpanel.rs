@@ -1,16 +1,14 @@
-use std::{cmp, rc::Rc};
+use std::{cmp, rc::Rc, str::FromStr};
 
-use dominator::{clone, events, html, with_node, Dom, DomBuilder};
+use dominator::{clone, events, html, Dom, DomBuilder};
 use futures_signals::{
     map_ref,
     signal::{Mutable, ReadOnlyMutable, Signal, SignalExt},
     signal_vec::{MutableVec, SignalVecExt},
 };
-use gloo_console::log;
-use lazy_static::__Deref;
-use web_sys::{Element, HtmlElement};
-
-use super::util::Widget;
+use wasm_bindgen::JsCast;
+use web_sys::{HtmlElement, EventTarget};
+use uuid::Uuid;
 
 fn builder_noop(builder: DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> {
     builder
@@ -19,8 +17,7 @@ pub struct Tab {
     title: Mutable<String>,
     closable: Mutable<bool>,
     icon: Mutable<Option<String>>,
-    render_mixin: fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
-    render_content: Box<dyn Fn() -> Dom>,
+    id: Uuid,
 }
 
 impl Tab {
@@ -29,8 +26,9 @@ impl Tab {
             title: Mutable::new(String::from("")),
             closable: Mutable::new(true),
             icon: Mutable::new(None),
-            render_mixin: builder_noop,
-            render_content: Box::new(|| html!("div")),
+            // render_mixin: builder_noop,
+            // render_content: Box::new(|| html!("div")),
+            id: Uuid::new_v4(),
         }
     }
 
@@ -49,42 +47,33 @@ impl Tab {
         self
     }
 
-    pub fn set_render_mixin(
-        &mut self,
-        mixin: fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
-    ) -> &Self {
-        self.render_mixin = mixin;
-        self
+    // pub fn set_render_mixin(
+    //     &mut self,
+    //     mixin: fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
+    // ) -> &Self {
+    //     self.render_mixin = mixin;
+    //     self
+    // }
+
+    // pub fn set_render_content(&mut self, render: Box<dyn Fn() -> Dom>) -> &Self {
+    //     self.render_content = render;
+    //     self
+    // }
+
+    fn title(&self) -> &Mutable<String> {
+        &self.title
     }
 
-    pub fn set_render_content(&mut self, render: Box<dyn Fn() -> Dom>) -> &Self {
-        self.render_content = render;
-        self
-    }
-
-    fn title(&self) -> Mutable<String> {
-        self.title.clone()
-    }
-
-    fn get_render_mixin(&self) -> fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> {
-        self.render_mixin
-    }
+    // fn get_render_mixin(&self) -> fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement> {
+    //     self.render_mixin
+    // }
 
     fn render(&self) -> Dom {
-        (self.render_content)()
+        html!("div")
     }
 
     fn closable(&self) -> &Mutable<bool> {
         &self.closable
-    }
-}
-
-pub trait TabPanelInfo: Widget {
-    fn title(&self) -> String {
-        "".to_owned()
-    }
-    fn closable(&self) -> bool {
-        true
     }
 }
 
@@ -97,6 +86,7 @@ pub enum TabPosition {
 pub struct TabPanel {
     current_tab: Mutable<usize>,
     tabs: MutableVec<Rc<Tab>>,
+    id: Uuid,
 }
 
 impl TabPanel {
@@ -104,6 +94,7 @@ impl TabPanel {
         TabPanel {
             current_tab: Mutable::new(0),
             tabs: MutableVec::new(),
+            id: Uuid::new_v4()
         }
     }
 
@@ -123,6 +114,67 @@ impl TabPanel {
         .dedupe()
     }
 
+    pub fn render_with_mixin(
+        self: &Rc<TabPanel>,
+        mixin: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
+    ) -> Dom {
+        let panel = self.clone();
+        html!("div", {
+            .attr("data-panel-id", &self.id.to_string())
+            .style("width", "1000px")
+            .style("height", "700px")
+            .apply(mixin)
+            .class("mtw-tabpanel")
+            .children(&mut [
+                html!("ul", {
+                    .class("mtw-tabbar")
+                    .children_signal_vec(self.tabs.signal_vec_cloned()
+                    .enumerate().map(clone!( panel => move |(index, widget)| {
+                        html!("li", {
+                        .attr("data-tab-id", &widget.id.to_string())
+                        .class("mtw-tabbar-tab")
+                        .children(&mut [
+                            html!("span", {
+                                .class("mtw-tab-icon")
+                            }),
+                            html!("span", {
+                                .class("mtw-tab-title")
+                                .text_signal( widget.title().signal_cloned() )
+                            }),
+                            html!("span", {
+                                .visible_signal(widget.closable().signal())
+                                .class("mtw-tab-close")
+                                .class("mtw-tab-closable")
+                                .text("×")
+                                .event(clone!(panel, index => move |_: events::Click| {
+                                    panel.remove_tab( index.get().unwrap() );
+                                }))
+                            })
+                        ])
+                        .class_signal("mtw-tab-active", panel.is_currently_selected_tab( &index ) )
+                        .event(clone!(panel, index => move |_: events::Click| {
+                            panel.select_tab( index.get().unwrap() )
+                        }))
+                        .event(clone!(panel => move |event: events::DragStart| {
+
+                        }))
+                    })})))
+                }),
+                html!("div", {
+                    .class("mtw-tab-container")
+                    .children_signal_vec(self.tabs.signal_vec_cloned()
+                        .enumerate().map(clone!( panel => move |(index, widget)|
+                            html!("div", {
+                                .class("mtw-tab-frame")
+                                .child( widget.render() )
+                                .visible_signal( panel.is_currently_selected_tab( &index ) )
+                            })
+                        )))
+                }),
+            ])
+        })
+    }
+
     pub fn add_tab(&self, widget: Rc<Tab>, position: TabPosition) {
         match position {
             TabPosition::Index(i) => {
@@ -132,6 +184,10 @@ impl TabPanel {
             TabPosition::End => self.tabs.lock_mut().push_cloned(widget),
             TabPosition::Start => self.tabs.lock_mut().insert_cloned(0, widget),
         }
+    }
+
+    pub fn get_tab_index(&self, tab: &Rc<Tab> ) -> Option<usize> {
+        self.tabs.lock_ref().into_iter().position(|r| Rc::ptr_eq(r, tab))
     }
 
     pub fn select_tab(&self, index: usize) {
@@ -144,78 +200,29 @@ impl TabPanel {
         let len = self.tabs.lock_ref().len();
         let index = cmp::min(index, len - 1);
         self.tabs.lock_mut().remove(index);
-        let len = self.tabs.lock_ref().len();
+        let len: usize = self.tabs.lock_ref().len();
         if self.current_tab.get() >= len - 1 {
             self.current_tab.set(len - 1);
         }
     }
-}
 
-impl Widget for Rc<TabPanel> {
-    fn render_with_mixin(
-        self: &Rc<TabPanel>,
-        mixin: &dyn Fn(DomBuilder<HtmlElement>) -> DomBuilder<HtmlElement>,
-    ) -> Dom {
-        let panel = self.clone();
-        html!("div", {
-            .style("width", "1000px")
-            .style("height", "700px")
-            .apply(mixin)
-            .class("mtw-tabpanel")
-            .children(&mut [
-                html!("ul", {
-                    .class("mtw-tabbar")
-                    .children_signal_vec(self.tabs.signal_vec_cloned()
-                    .enumerate().map(clone!( panel => move |(index, widget)| {
-                        html!("li", {
-                            .class("mtw-tabbar-tab")
-                            .children(&mut [
-                                html!("span", {
-                                    .class("mtw-tab-icon")
-                                }),
-                                html!("span", {
-                                    .class("mtw-tab-title")
-                                    .text_signal( widget.title().signal_cloned() )
-                                }),
-                                html!("span", {
-                                    .visible_signal(widget.closable().signal())
-                                    .class("mtw-tab-close")
-                                    .class("mtw-tab-closable")
-                                    .text("×")
-                                    .event(clone!(panel, index => move |_: events::Click| {
-                                        panel.remove_tab( index.get().unwrap() );
-                                    }))
-                                })
-                                ])
-                                .class_signal("mtw-tab-active", panel.is_currently_selected_tab( &index ) )
-                                .event(clone!(panel, index => move |_: events::Click| {
-                                    panel.select_tab( index.get().unwrap() )
-                                }))
-                                .event(clone!(panel => move |event: events::DragStart| {
+    pub fn check_if_over_tabpanel(&self, target: &EventTarget ) -> bool {
+        if let Some(element) = target.dyn_ref::<web_sys::Element>() {
+            element.closest(&format!("div[data-panel-id=\"{}\"", self.id.to_string())).is_ok_and(|e| e.is_some())
+        } else {
+            false
+        }
+    }
 
-                                }))
-                                .apply( widget.get_render_mixin() )
-                            })
-                        }))
-                    )
-                    // .child(&mut
-                    //     html!("li", {
-                    //         .class("mtw-tabbar-tab")
-                    //     })
-                    // )
-                }),
-                html!("div", {
-                    .class("mtw-tab-container")
-                    .children_signal_vec(self.tabs.signal_vec_cloned()
-                    .enumerate().map(clone!( panel => move |(index, widget)|
-                    html!("div", {
-                        .class("mtw-tab-frame")
-                        .child( widget.render() )
-                                .visible_signal( panel.is_currently_selected_tab( &index ) )
-                            })
-                        )))
-                }),
-            ])
-        })
+    pub fn get_tab_index_from_target(&self, target: &EventTarget ) -> Option<usize> {
+        if self.check_if_over_tabpanel(target) {
+            target.dyn_ref::<web_sys::Element>()
+                .and_then(|ele| ele.closest(".mtw-tabbar-tab").unwrap_or(None))
+                .and_then(|t| t.get_attribute("data-tab-id"))
+                .and_then(|s| Uuid::from_str(&s).ok())
+                .and_then(|id| self.tabs.lock_ref().into_iter().position(|t| t.id == id))
+        } else {
+            None
+        }
     }
 }
